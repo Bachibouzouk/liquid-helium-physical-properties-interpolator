@@ -22,8 +22,9 @@ m_He4=Mm/Na
 
 PSI_TO_PASCAL = 6894.7572798677
 
+ahah = 12
 #This is the path to the data sets
-he4_data_path="expt_datasets/"
+he4_data_path = "C:/Users/pfduc/Documents/Helium Properties/liquid_helium_physical_properties_interpolator/expt_datasets"
 
 def density(P,T):
     """
