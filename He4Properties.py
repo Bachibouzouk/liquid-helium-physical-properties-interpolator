@@ -20,6 +20,7 @@ R=8.3144621 #J/(mol K) (±0.0000075) from http://physics.nist.gov/cgi-bin/cuu/Va
 Rs=R/Mm  #J/(kg K)
 m_He4=Mm/Na
 
+PSI_TO_PASCAL = 6894.7572798677
 
 #This is the path to the data sets
 he4_data_path="expt_datasets/"
@@ -157,7 +158,7 @@ def interpolate_density(P,T,fname=join(he4_data_path,"He_liquid_density_tables.d
 
     if T in Tref:
         dens=dat[:,Tref==T]
-        SVP=np.squeeze(dat_svp[dat_svp[:,0]==T,1]/6894.7572798677)
+        SVP=np.squeeze(dat_svp[dat_svp[:,0]==T,1]/PSI_TO_PASCAL)
         if P<SVP:
             print "He4Properties.interpolate_density : The pressure %.3f is lower than the saturated vapor pressure(%.3f) for the temperature %.3f, it is not liquid anymore"%(P,SVP,T)
         interp1d_over_P=interpolate.interp1d(np.array([SVP,Pref]),np.squeeze(dens),kind='linear')
@@ -176,7 +177,7 @@ def interpolate_density(P,T,fname=join(he4_data_path,"He_liquid_density_tables.d
         Tref2=[]
         for t in Tref:
             dens=dat[:,Tref==t]
-            SVP=np.squeeze(dat_svp[dat_svp[:,0]==t,1]/6894.7572798677)
+            SVP=np.squeeze(dat_svp[dat_svp[:,0]==t,1]/PSI_TO_PASCAL)
             if P>SVP:
                 interp1d_over_P=interpolate.interp1d(np.array([SVP,Pref]),np.squeeze(dens),kind='linear')
                 try:
@@ -245,7 +246,7 @@ def interpolate_viscosity(P,T,fname=join(he4_data_path,"He_liquid_viscosity.dat"
     #    print dat_svp[:,0]
         if T in Tref:
             visc=dat[:,Tref==T]
-            SVP=np.squeeze(dat_svp[dat_svp[:,0]==T,1]/6894.7572798677)
+            SVP=np.squeeze(dat_svp[dat_svp[:,0]==T,1]/PSI_TO_PASCAL)
             if P<SVP:
                 print "He4Properties.interpolate_density : The pressure %.3f is lower than the saturated vapor pressure(%.3f) for the temperature %.3f, it is not liquid anymore"%(P,SVP,T)
     
@@ -266,7 +267,7 @@ def interpolate_viscosity(P,T,fname=join(he4_data_path,"He_liquid_viscosity.dat"
             Tref2=[]
             for t in Tref:
                 visc=dat[:,Tref==t]
-                SVP=np.squeeze(dat_svp[dat_svp[:,0]==t,1]/6894.7572798677)
+                SVP=np.squeeze(dat_svp[dat_svp[:,0]==t,1]/PSI_TO_PASCAL)
                 if P>SVP:
                     interp1d_over_P=interpolate.interp1d(np.array([SVP,Pref]),np.squeeze(visc),kind='linear')
                     try:
@@ -286,6 +287,102 @@ def interpolate_viscosity(P,T,fname=join(he4_data_path,"He_liquid_viscosity.dat"
                     plt.hold(True)
                     plt.plot(Tref,d,'b')
             return interp1d_over_T(T)
+
+
+def thermal_conductivity(P,T):
+    """returns helium thermal conductivity for P in psi and T in K"""
+    answer=np.array([])
+    if np.size(P)>1 and np.size(T)>1:
+        answer=[]
+        for t in T:
+            answer_line=np.array([])
+            for p in P:
+                print p,t
+                answer_line=np.append(answer_line,thermal_conductivity(p,t))
+            answer.append(answer_line)
+        return np.vstack(answer)
+    elif np.size(T)>1 and np.size(P)==1:
+        for t in T:
+            answer=np.append(answer,thermal_conductivity(P,t))
+        return answer
+    elif np.size(P)>1 and np.size(T)==1:
+        for p in P:
+            answer=np.append(answer,thermal_conductivity(p,T))
+        return answer
+    elif np.size(P)==1 and np.size(P)==np.size(T):
+        return np.squeeze(interpolate_therm_cond(P,T,join(he4_data_path,"He_therm_cond_tables.dat")))
+    else:
+        print "error in He4Property.thermal_conductivity, T and P arrays are empty"
+
+def interpolate_therm_cond(P,T,fname=join(he4_data_path,"He_therm_cond_tables.dat"),test_plot=False):
+    if T<2.1768:
+        print "the data in He_liquid_SVP.dat do not go lower that 2.1768K so we cannot get the thermal conductivity for %.4f"%T
+    dat=np.loadtxt(fname)
+    Tref=dat[:,0]
+    dat=np.transpose(dat)
+    #select the thermal conductivities for the different pressure (each row is a different pressure)
+    dat=dat[1:]
+    
+    #load the information about the pressure from the file
+    Pref = []
+    of_pressures = open(fname)
+    for line in of_pressures:
+        if line[0:2] == "#P":
+            pressure_list = line[2:].split(',')
+            for p in pressure_list:
+                Pref.append(float(p))
+    Pref = np.array(Pref)
+    Pref = Pref/PSI_TO_PASCAL
+    therm_cond_fixed_P=[]
+
+    if (P < Pref).all() or (P > Pref).all():
+        print "He4Properties.interpolate_density : The pressure %.3f psi is out of the interpolation range [%.3f,%.3f] (psi) "%(P,np.min(Pref),np.max(Pref))
+        return np.nan
+
+    if T in Tref:
+        therm_cond=dat[:,Tref==T]
+
+      
+        interp1d_over_P=interpolate.interp1d(Pref,np.squeeze(therm_cond),kind='linear')
+        if test_plot:
+            #    Test plot to see if the interpolation gives a good estimate
+            plt.plot(T,interp1d_over_P(P),'-ok')
+            for d in dat:
+                plt.hold(True)
+                plt.plot(Tref,d,'-b')
+            plt.show()
+            
+        try:
+            return interp1d_over_P(P)
+        except ValueError:
+            return np.nan
+    else: 
+        #T is not in the tabulated values so we get an interpolation over P for all T in the table
+        Tref2=[]
+        for t in Tref:
+            therm_cond=dat[:,Tref==t]
+#            print t
+#            print np.size(therm_cond),np.size(Pref)
+#            print therm_cond, Pref
+            interp1d_over_P=interpolate.interp1d(Pref,np.squeeze(therm_cond),kind='linear')
+            try:
+                therm_cond_fixed_P.append(interp1d_over_P(P))
+                Tref2.append(t)
+            except ValueError:
+                print "the value of pressure %.2f atm is out of interpolation range (%.2f-%.2f) for the selected temperature %.3f K, please input a value in the following list:"%(P,np.min(Pref),np.max(Pref),T)
+                
+        #interpolate over the interpolated fixed pressure density versus temperature curve    
+        interp1d_over_T=interpolate.InterpolatedUnivariateSpline(Tref2,therm_cond_fixed_P)
+        if test_plot:
+            #    Test plot to see if the interpolation gives a good estimate
+            plt.plot(Tref,therm_cond_fixed_P,'-xr')
+            for d in dat:
+                plt.hold(True)
+                plt.plot(Tref,d,'b')
+            plt.show()
+            
+        return interp1d_over_T(T)
+
 
 def T_lambda(P):
     """
@@ -318,7 +415,7 @@ def saturated_vapor_pressure(T):
         return answer
     else:
         data=np.loadtxt(fname=join(he4_data_path,"He_liquid_SVP.dat"))
-        my_interp=interpolate.interp1d(np.squeeze(data[:,0]),np.squeeze(data[:,1])/6894.7572798677,kind='linear')
+        my_interp=interpolate.interp1d(np.squeeze(data[:,0]),np.squeeze(data[:,1])/PSI_TO_PASCAL,kind='linear')
         return my_interp(T)
         
 def uncertainty(func,P,dP,T,dT):
@@ -377,5 +474,6 @@ def uncertainty(func,P,dP,T,dT):
 if __name__=="__main__":
     
     print viscosity(30,2.3)
+    print viscosity([1,2],[2.1,2.2,2.3])
     print "The density of liquid helium4 is at P= and T= is equal to %.3f kgm^-3"%(density(30,2.3))
- 
+
