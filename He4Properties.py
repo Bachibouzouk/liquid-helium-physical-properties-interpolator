@@ -7,7 +7,7 @@
 import numpy as np
 import pylab as plt
 from scipy import interpolate
-from os.path import join
+from os.path import join, abspath, basename
 
 Mm=4.002602e-3 #kg/mol from http://webbook.nist.gov/cgi/cbook.cgi?ID=C7440597&Type=JANAFG&Plot=on
 Na=6.02214129*1e23 #1/mol 
@@ -23,7 +23,8 @@ m_He4=Mm/Na
 PSI_TO_PASCAL = 6894.7572798677
 
 #This is the path to the data sets
-he4_data_path = "C:/Users/pfduc/Documents/Helium Properties/liquid_helium_physical_properties_interpolator/expt_datasets"
+cur_asb_path = abspath(__file__).strip(basename(__file__))
+he4_data_path = join(cur_asb_path,"expt_datasets")
 
 def density(P,T):
     """
