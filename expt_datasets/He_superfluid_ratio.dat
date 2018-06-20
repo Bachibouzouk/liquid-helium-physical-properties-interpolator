@@ -1,5 +1,5 @@
 #Source Donnelly http://pages.uoregon.edu/rjd/table4.htm
-#The data between 2.1K and Tlambda are obtained supposing a power law (1-T/Tlambda)^(2/3)
+#For 2.5 atm, the data between 2.1K and Tlambda are obtained supposing a power law (1-T/Tlambda)^(2/3)
 #Temperature(K) ratio superfluid at SVP and 2.5atm
 0.1	1.00000	1.00000
 0.15	1.00000	1.00000

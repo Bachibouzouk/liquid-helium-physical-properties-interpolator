@@ -7,7 +7,7 @@
 import numpy as np
 import pylab as plt
 from scipy import interpolate
-from os.path import join, abspath, basename
+from os.path import join, abspath, basename, exists
 
 Mm=4.002602e-3 #kg/mol from http://webbook.nist.gov/cgi/cbook.cgi?ID=C7440597&Type=JANAFG&Plot=on
 Na=6.02214129*1e23 #1/mol 
@@ -25,6 +25,12 @@ PSI_TO_PASCAL = 6894.7572798677
 #This is the path to the data sets
 cur_asb_path = abspath(__file__).strip(basename(__file__))
 he4_data_path = join(cur_asb_path,"expt_datasets")
+
+he4_data_path = "%s"%(he4_data_path)
+
+
+
+print(he4_data_path)
 
 def density(P,T):
     """
@@ -140,7 +146,10 @@ def superfluid_density_ratio(P,T):
             answer=np.append(answer,superfluid_density_ratio(p,T))
         return answer
     elif np.size(P)==1 and np.size(P)==np.size(T):
-            return np.squeeze(interpolate_density(P,T,fname=join(he4_data_path,"He_superfluid_ratio.dat")))
+            if T > T_lambda(P):
+                return 0
+            else:
+                return np.squeeze(interpolate_density(P,T,fname=join(he4_data_path,"He_superfluid_ratio.dat")))
     else:
         print "error in He4Property.density, T and P arrays are empty"
 
@@ -231,10 +240,13 @@ def interpolate_viscosity(P,T,fname=join(he4_data_path,"He_liquid_viscosity.dat"
     the same temp points, therefore obtaining a curve for a constant pressure, 
     then this curve is itself cubic interpolated to get the temperature dependance.
     """    
-    if T<1.2:
-        print "the data in He_liquid_viscosity.dat do not go lower that 1.2K so we cannot get the viscosity for %.4f"%T
+    if T<0.8:
+        print("the data in He_liquid_viscosity.dat do not go lower that 0.8K so we cannot get the viscosity for %.4f"%T)
         return np.nan
     else:
+        if T<1.2:
+             print("the data in He_liquid_viscosity.dat lower that 1.2K are the values at SVP")
+            
         dat=np.loadtxt(fname)
         Tref=dat[:,0]
         Pref=64.6621746#value is in psi
