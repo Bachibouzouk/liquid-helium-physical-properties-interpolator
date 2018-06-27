@@ -429,7 +429,7 @@ def interpolate_therm_cond(P,T,fname=join(he4_data_path,"He_therm_cond_tables.da
 #redo for each T. This works only at low pressure and is not the most
 #accurate process
 heI_th_cond = interpolate_therm_cond(1.46,3,funcmode = True)
-heII_th_cond = interpolate_therm_cond(14,1,funcmode = True)
+heII_th_cond = interpolate_therm_cond(14,1.2,funcmode = True)
     
 def thermal_conductivity_SVP(T):
     """
@@ -460,6 +460,43 @@ def thermal_conductivity_SVP(T):
             return heI_th_cond(T)
         else:
             return heII_th_cond(T)
+
+
+def interpolate_specific_heat(T,fname=join(he4_data_path,"He_liquid_specific_heat.dat"),test_plot=False, funcmode=False):
+    """
+    The data are only at SVP from 0 K until 5K
+    """
+        
+    if T > 5 :
+        print("the data in 'He_liquid_specific_heat.dat' do not go higher that 5K so we cannot get the specific heat for %.4f"%T)
+
+    dat=np.loadtxt(fname)
+    Tref = dat[:,0]
+    spec_heat = dat[:,1] # J/(kg K)
+    interp1d_over_T=interpolate.interp1d(Tref, spec_heat)
+    
+    if test_plot:
+        # Test plot to see if the interpolation gives a good estimate
+        plt.plot(Tref,spec_heat,'-ok')
+        plt.plot(T,interp1d_over_T(T),'sb')
+        plt.show()    
+    
+    #if the interpolation has to be used for multiple T
+    #(ie for thermal leaks calculations), this will be faster
+    if funcmode:
+        return np.vectorize(interp1d_over_T)
+    else:
+        return interp1d_over_T(T)
+        
+#if the user wants the specific heat at more than one temperature
+he_specific_heat = interpolate_specific_heat(1, funcmode=True)        
+        
+def specific_heat_SVP(T):
+    """
+    Specific heat of Helium 4 at SVP
+    """
+    
+    return np.squeeze(he_specific_heat(T))
 
 
 def T_lambda(P):
